@@ -896,7 +896,7 @@ handle_resp:
 	} break;
 	case DAEMON_TO_CONTROLLER__CODE__LOG_MESSAGE_FRAGMENT: {
 		if (!log_dir) {
-			WARN("log_dir is null. Did not except to receive a LOG_MESSAGE");
+			WARN("log_dir is null. Did not expect to receive a LOG_MESSAGE");
 			protobuf_free_message((ProtobufCMessage *)resp);
 			goto handle_resp;
 		}
