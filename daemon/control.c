@@ -152,6 +152,8 @@ control_send_file_as_log_message_cb(const char *path, const char *file, void UNU
 			}
 		}
 		mem_free0(file_buf);
+		//remove logfile from filesystem after transmission to controller.
+		remove(path_str);
 	} else {
 		DEBUG("File %s could not be read to buffer.", str_buffer(path_str));
 		ret = 1;
