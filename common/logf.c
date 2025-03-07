@@ -268,6 +268,13 @@ logf_handler_set_prio(logf_handler_t *handler, logf_prio_t prio)
 	handler->prio = prio;
 }
 
+list_t *
+logf_get_handlers(const char *prefix)
+{
+	// TODO: logf_handler->data contains the used logfile, maybe we just return the used logfiles instead of the handlers
+	return logf_handler_list;
+}
+
 /******************************************************************************/
 
 char *

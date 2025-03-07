@@ -54,6 +54,8 @@
  * @endcode
  */
 
+#include "list.h"
+
 #ifndef LOGF_H
 #define LOGF_H
 
@@ -344,5 +346,12 @@ logf_klog_new(const char *name);
  */
 void
 logf_klog_write(logf_prio_t prio, const char *msg, void *data);
+
+/**
+ * Return all registered handlers that use a logfile with the given prefix. 
+ * e.g. "cml-scd" for the cml-scd log files
+ */
+list_t *
+logf_get_handlers(const char *prefix);
 
 #endif /* LOGF_H */
