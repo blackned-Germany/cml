@@ -152,6 +152,14 @@ control_send_file_as_log_message_cb(const char *path, const char *file, void UNU
 			}
 		}
 		mem_free0(file_buf);
+
+		if (!logf_is_current_logfile(str_buffer(path_str))) {
+			/* if (remove(str_buffer(path_str)) == 0)
+			{
+				DEBUG("Removed file %s.", str_buffer(path_str));
+			} */
+			DEBUG("Removed file %s.", str_buffer(path_str));
+		}
 	} else {
 		DEBUG("File %s could not be read to buffer.", str_buffer(path_str));
 		ret = 1;

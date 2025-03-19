@@ -41,6 +41,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <sys/stat.h>
 
 // TODO: we should not include this in production builds...
 #ifndef LOGF_FILE_STRIP
@@ -268,11 +269,31 @@ logf_handler_set_prio(logf_handler_t *handler, logf_prio_t prio)
 	handler->prio = prio;
 }
 
-list_t *
-logf_get_handlers(const char *prefix)
+bool
+logf_is_current_logfile(const char *filepath)
 {
-	// TODO: logf_handler->data contains the used logfile, maybe we just return the used logfiles instead of the handlers
-	return logf_handler_list;
+	struct stat file;
+	stat(filepath, &file);
+	DEBUG("DAVID file Inode: %ld", file.st_ino);
+
+	for (list_t *l = logf_handler_list; l; l = l->next) {
+		logf_handler_t *h = l->data;
+		if (h) {
+			struct stat logfile;
+			fstat(fileno(h->data), &logfile);
+
+			DEBUG("DAVID logfile Inode: %ld", logfile.st_ino);
+
+			if (file.st_ino == logfile.st_ino && file.st_dev == logfile.st_dev) {
+				DEBUG("File is a currently used logfile. %s", filepath);
+				return true;
+			}
+		}
+	}
+
+	DEBUG("File is not a currently used logfile. %s", filepath);
+
+	return false;
 }
 
 /******************************************************************************/

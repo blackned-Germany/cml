@@ -312,6 +312,11 @@ main_init(void)
 	scd_logfile_p = logf_file_new(LOGFILE_DIR "/cml-scd");
 	scd_logfile_handler = logf_register(&logf_file_write, scd_logfile_p);
 	logf_handler_set_prio(scd_logfile_handler, LOGF_PRIO_TRACE);
+
+	DEBUG("DAVID main_init scd");
+	struct stat logfile;
+	fstat(fileno(scd_logfile_p), &logfile);
+	DEBUG("DAVID logf_register file Inode: %ld", logfile.st_ino);
 }
 
 int

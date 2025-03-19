@@ -348,10 +348,10 @@ void
 logf_klog_write(logf_prio_t prio, const char *msg, void *data);
 
 /**
- * Return all registered handlers that use a logfile with the given prefix. 
- * e.g. "cml-scd" for the cml-scd log files
+ * Checks if a file is a currently used log file.
+ * @param filepath Path to the file which shall be checked.
  */
-list_t *
-logf_get_handlers(const char *prefix);
+bool
+logf_is_current_logfile(const char *filepath);
 
 #endif /* LOGF_H */
