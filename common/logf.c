@@ -21,6 +21,7 @@
  * Fraunhofer AISEC <gyroidos@aisec.fraunhofer.de>
  */
 
+#include "str.h"
 #include "macro.h"
 #include "logf.h"
 #include "list.h"
@@ -300,6 +301,9 @@ logf_file_new_name(const char *name)
 void *
 logf_file_new(const char *name)
 {
+	str_t *current = str_new(name);
+	str_append(current, ".current");
+
 	FILE *f;
 	char *name_with_time_of_day = logf_file_new_name(name);
 	f = fopen(name_with_time_of_day, "w");
@@ -312,6 +316,13 @@ logf_file_new(const char *name)
 		f = NULL;
 	}
 
+	unlink(str_buffer(current));
+	if (symlink(name_with_time_of_day, str_buffer(current)) < 0) {
+		ERROR_ERRNO("Could not create symlink %s at %s", name_with_time_of_day,
+			    str_buffer(current));
+	}
+
+	str_free(current, true);
 	mem_free0(name_with_time_of_day);
 
 	return f;
