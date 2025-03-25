@@ -51,6 +51,7 @@
 #include "common/str.h"
 #include "common/proc.h"
 #include "common/sock-sd.h"
+#include <sys/file.h>
 
 #include <unistd.h>
 #include <inttypes.h>
@@ -73,6 +74,11 @@ struct control {
 
 static list_t *control_list = NULL;
 
+struct log_cb_data {
+	int fd;
+	list_t *current_logs;
+};
+
 /**
  * @brief callback for the dir_foreach function sending a file as LogMessage to the Controller
  * @path: Expects path string without trailing "/" at the end
@@ -84,11 +90,20 @@ control_send_file_as_log_message_cb(const char *path, const char *file, void UNU
 	IF_NULL_RETVAL(path, 1);
 	IF_NULL_RETVAL(file, 1);
 
-	int *fd = (int *)data;
+	struct log_cb_data *cbdata = data;
+	ASSERT(cbdata);
+
 	int ret = 0;
 	str_t *path_str = str_new(path);
 	str_append(path_str, "/");
 	str_append(path_str, file);
+
+	//current logfile link and lock file shall not be processed.
+	if ((strstr(file, ".current") != NULL) || (file_is_link(str_buffer(path_str))) ||
+	    (strstr(file, ".lock-delete-old") != NULL)) {
+		str_free(path_str, true);
+		return ret;
+	}
 
 	LogMessage message = LOG_MESSAGE__INIT;
 
@@ -124,7 +139,8 @@ control_send_file_as_log_message_cb(const char *path, const char *file, void UNU
 				      str_buffer(path_str), sent, size - sent);
 
 				out.log_message = &message;
-				if (protobuf_send_message(*fd, (ProtobufCMessage *)&out) < 0) {
+				if (protobuf_send_message(cbdata->fd, (ProtobufCMessage *)&out) <
+				    0) {
 					ERROR_ERRNO("Could not finish sending %s",
 						    str_buffer(path_str));
 					ret = 1;
@@ -140,7 +156,8 @@ control_send_file_as_log_message_cb(const char *path, const char *file, void UNU
 				message.msg = (char *)mem_strndup(file_buf + sent, size - sent);
 
 				out.log_message = &message;
-				if (protobuf_send_message(*fd, (ProtobufCMessage *)&out) < 0) {
+				if (protobuf_send_message(cbdata->fd, (ProtobufCMessage *)&out) <
+				    0) {
 					ERROR_ERRNO("Could not finish sending %s",
 						    str_buffer(path_str));
 					ret = 1;
@@ -152,6 +169,29 @@ control_send_file_as_log_message_cb(const char *path, const char *file, void UNU
 			}
 		}
 		mem_free0(file_buf);
+
+		bool is_current_log = false;
+		for (list_t *l = cbdata->current_logs; l; l = l->next) {
+			char *logfile = l->data;
+			if (logfile) {
+				if (strcmp(logfile, str_buffer(path_str)) == 0) {
+					is_current_log = true;
+					break;
+				}
+			}
+		}
+
+		if (!is_current_log) {
+			int remove_ret = remove(str_buffer(path_str));
+
+			if (remove_ret != 0) {
+				ERROR("Failed to remove %s. Return code: %d", str_buffer(path_str),
+				      remove_ret);
+			}
+
+			DEBUG("Removed log file %s", str_buffer(path_str));
+		}
+
 	} else {
 		DEBUG("File %s could not be read to buffer.", str_buffer(path_str));
 		ret = 1;
@@ -1104,8 +1144,35 @@ control_handle_message(control_t *control, const ControllerToDaemon *msg, int fd
 		out.has_response = true;
 		out.response = DAEMON_TO_CONTROLLER__RESPONSE__CMD_FAILED;
 
+		int lock_fd = open(LOGFILE_DIR "/.lock-delete-old", O_RDWR | O_CREAT, 0644);
+		if (lock_fd == -1) {
+			FATAL_ERRNO("Failed to open .lock-delete-old\n");
+		}
+
+		int log_folder_lock = flock(lock_fd, LOCK_EX);
+		if (log_folder_lock < 0) {
+			ERROR_ERRNO("Failed to get lock on .lock-delete-old");
+			close(lock_fd);
+			break;
+		}
+
+		list_t *current_logs = logf_get_currently_used_log_files(LOGFILE_DIR);
+
+		struct log_cb_data cbdata = { .fd = fd, .current_logs = current_logs };
+
 		int dir_ret =
-			dir_foreach(LOGFILE_DIR, &control_send_file_as_log_message_cb, (void *)&fd);
+			dir_foreach(LOGFILE_DIR, &control_send_file_as_log_message_cb, &cbdata);
+
+		if (log_folder_lock == 0 && flock(lock_fd, LOCK_UN)) {
+			ERROR_ERRNO("Failed to release lock on .lock-delete-old");
+		} else {
+			close(lock_fd);
+			int remove_ret = remove(LOGFILE_DIR "/.lock-delete-old");
+			if (remove_ret != 0) {
+				ERROR("Failed to remove %s. Return code: %d",
+				      LOGFILE_DIR "/.lock-delete-old", remove_ret);
+			}
+		}
 
 		if (dir_ret < 0) {
 			WARN("Something went wrong during traversal of LOGFILE_DIR");
