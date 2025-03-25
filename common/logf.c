@@ -26,6 +26,8 @@
 #include "logf.h"
 #include "list.h"
 #include "mem.h"
+#include "file.h"
+#include "dir.h"
 
 #ifdef ANDROID
 #include <cutils/klog.h>
@@ -42,6 +44,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <linux/limits.h>
 
 // TODO: we should not include this in production builds...
 #ifndef LOGF_FILE_STRIP
@@ -267,6 +270,55 @@ logf_handler_set_prio(logf_handler_t *handler, logf_prio_t prio)
 {
 	ASSERT(handler);
 	handler->prio = prio;
+}
+
+static int
+logf_current_log_cb(const char *path, const char *file, void *data)
+{
+	list_t **log_file_list = (list_t **)data;
+
+	str_t *path_str = str_new(path);
+	str_append(path_str, "/");
+	str_append(path_str, file);
+
+	//only process .current symlinks.
+	if ((strstr(file, ".current") == NULL) || (!file_is_link(str_buffer(path_str)))) {
+		return 0;
+	}
+
+	char buffer[PATH_MAX];
+
+	//-1 is used to leave space for null terminator.
+	ssize_t len = readlink(str_buffer(path_str), buffer, PATH_MAX - 1);
+
+	if (len != -1) {
+		// Ensure the buffer is null-terminated
+		buffer[len] = '\0';
+		DEBUG("Adding currently used logfile to list %s", buffer);
+		*log_file_list = list_append(*log_file_list, mem_strdup(buffer));
+	} else {
+		ERROR_ERRNO("readlink");
+		return -1;
+	}
+
+	str_free(path_str, true);
+
+	return 0;
+}
+
+list_t *
+logf_get_currently_used_log_files(const char *path)
+{
+	list_t *current_log_files = NULL;
+	int dir_ret = dir_foreach(path, &logf_current_log_cb, &current_log_files);
+
+	if (dir_ret < 0) {
+		WARN("Something went wrong during traversal of LOGFILE_DIR");
+	} else if (dir_ret > 0) {
+		WARN("%d logs could not be analyzed.", dir_ret);
+	}
+
+	return current_log_files;
 }
 
 /******************************************************************************/

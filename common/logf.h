@@ -54,6 +54,8 @@
  * @endcode
  */
 
+#include "list.h"
+
 #ifndef LOGF_H
 #define LOGF_H
 
@@ -344,5 +346,8 @@ logf_klog_new(const char *name);
  */
 void
 logf_klog_write(logf_prio_t prio, const char *msg, void *data);
+
+list_t *
+logf_get_currently_used_log_files(const char *path);
 
 #endif /* LOGF_H */
