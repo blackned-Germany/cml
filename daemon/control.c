@@ -51,7 +51,6 @@
 #include "common/str.h"
 #include "common/proc.h"
 #include "common/sock-sd.h"
-#include <sys/file.h>
 
 #include <unistd.h>
 #include <inttypes.h>
@@ -1147,23 +1146,15 @@ control_handle_message(control_t *control, const ControllerToDaemon *msg, int fd
 		out.response = DAEMON_TO_CONTROLLER__RESPONSE__CMD_FAILED;
 
 		int dir_ret = 0;
-
 		bool remove_logs = (!msg->has_remove_logs) ? false : msg->remove_logs;
 
 		if (remove_logs) {
-			int lock_fd = open(LOGFILE_DIR "/.lock-delete-old", O_RDWR | O_CREAT, 0644);
-			if (lock_fd == -1) {
-				FATAL_ERRNO("Failed to open .lock-delete-old\n");
-			}
-
-			int log_folder_lock = flock(lock_fd, LOCK_EX);
-			if (log_folder_lock < 0) {
-				ERROR_ERRNO("Failed to get lock on .lock-delete-old");
-				close(lock_fd);
+			int lock_fd = logf_lock_logs(LOGFILE_DIR);
+			if (lock_fd < 0) {
 				break;
 			}
 
-			list_t *current_logs = logf_get_currently_used_log_files(LOGFILE_DIR);
+			list_t *current_logs = logf_get_currently_used_log_files_new(LOGFILE_DIR);
 
 			struct log_cb_data cbdata = { .fd = fd,
 						      .current_logs = current_logs,
@@ -1172,16 +1163,8 @@ control_handle_message(control_t *control, const ControllerToDaemon *msg, int fd
 			dir_ret = dir_foreach(LOGFILE_DIR, &control_send_file_as_log_message_cb,
 					      &cbdata);
 
-			if (log_folder_lock == 0 && flock(lock_fd, LOCK_UN)) {
-				ERROR_ERRNO("Failed to release lock on .lock-delete-old");
-			} else {
-				close(lock_fd);
-				int remove_ret = remove(LOGFILE_DIR "/.lock-delete-old");
-				if (remove_ret != 0) {
-					ERROR("Failed to remove %s. Return code: %d",
-					      LOGFILE_DIR "/.lock-delete-old", remove_ret);
-				}
-			}
+			list_delete(current_logs);
+			logf_release_lock(LOGFILE_DIR, lock_fd);
 		} else {
 			struct log_cb_data cbdata = { .fd = fd,
 						      .current_logs = NULL,

@@ -45,6 +45,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <linux/limits.h>
+#include <sys/file.h>
 
 // TODO: we should not include this in production builds...
 #ifndef LOGF_FILE_STRIP
@@ -307,7 +308,7 @@ logf_current_log_cb(const char *path, const char *file, void *data)
 }
 
 list_t *
-logf_get_currently_used_log_files(const char *path)
+logf_get_currently_used_log_files_new(const char *path)
 {
 	list_t *current_log_files = NULL;
 	int dir_ret = dir_foreach(path, &logf_current_log_cb, &current_log_files);
@@ -319,6 +320,56 @@ logf_get_currently_used_log_files(const char *path)
 	}
 
 	return current_log_files;
+}
+
+int
+logf_lock_logs(const char *path)
+{
+	str_t *path_str = str_new(path);
+	str_append(path_str, "/");
+	str_append(path_str, ".lock-delete-old");
+
+	int lock_fd = open(str_buffer(path_str), O_RDWR | O_CREAT, 0644);
+	if (lock_fd < 0) {
+		FATAL_ERRNO("Failed to open %s", str_buffer(path_str));
+	}
+
+	if (flock(lock_fd, LOCK_EX) < 0) {
+		ERROR_ERRNO("Failed to get lock on %s", str_buffer(path_str));
+		close(lock_fd);
+		lock_fd = -1;
+	}
+
+	str_free(path_str, true);
+
+	return lock_fd;
+}
+
+int
+logf_release_lock(const char *path, int lock_fd)
+{
+	int result = 0;
+
+	str_t *path_str = str_new(path);
+	str_append(path_str, "/");
+	str_append(path_str, ".lock-delete-old");
+
+	if (flock(lock_fd, LOCK_UN)) {
+		ERROR_ERRNO("Failed to release lock on %s", str_buffer(path_str));
+		result = -1;
+	} else {
+		close(lock_fd);
+		int remove_ret = remove(str_buffer(path_str));
+		if (remove_ret != 0) {
+			ERROR("Failed to remove %s. Return code: %d", str_buffer(path_str),
+			      remove_ret);
+			result = -1;
+		}
+	}
+
+	str_free(path_str, true);
+
+	return result;
 }
 
 /******************************************************************************/

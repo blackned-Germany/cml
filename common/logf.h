@@ -348,6 +348,12 @@ void
 logf_klog_write(logf_prio_t prio, const char *msg, void *data);
 
 list_t *
-logf_get_currently_used_log_files(const char *path);
+logf_get_currently_used_log_files_new(const char *path);
+
+int
+logf_lock_logs(const char *path);
+
+int
+logf_release_lock(const char *path, int lock_fd);
 
 #endif /* LOGF_H */
