@@ -355,12 +355,15 @@ c_hotplug_handle_usb_hotplug(unsigned actions, uevent_event_t *event, c_hotplug_
 						uevent_event_get_devname(event));
 					token_data->retry = 0;
 
+					DEBUG("Creating timer for token init");
 					// give devfs some time to create device node for token
 					event_timer_t *e =
-						event_timer_new(100, EVENT_TIMER_REPEAT_FOREVER,
+						event_timer_new(200, 10,
 								c_hotplug_token_timer_cb,
 								token_data);
+					DEBUG("Created time for token");
 					event_add_timer(e);
+					DEBUG("Added timer for token");
 				} else {
 					INFO("%s bound device node %d:%d -> container %s",
 					     (container_usbdev_is_assigned(ud)) ? "assign" :

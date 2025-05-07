@@ -167,6 +167,7 @@ event_timeout(void)
 static void
 event_timeout_handler(void)
 {
+	DEBUG("Calling event_timeout_handler");
 	struct timespec now;
 
 	IF_NULL_RETURN(event_timer_list);
@@ -189,7 +190,7 @@ event_timeout_handler(void)
 				else
 					timespec_add(&timer->diff, &timer->next, &timer->next);
 
-				TRACE("Handling timer event %p (func=%p, data=%p, diff=%u.%09us, repeat=%d)",
+				DEBUG("Handling timer event %p (func=%p, data=%p, diff=%u.%09us, repeat=%d)",
 				      (void *)timer, CAST_FUNCPTR_VOIDPTR timer->func, timer->data,
 				      (unsigned)timer->diff.tv_sec, (unsigned)timer->diff.tv_nsec,
 				      timer->repeat);
@@ -214,6 +215,7 @@ event_timer_t *
 event_timer_new(int timeout, int repeat, void (*func)(event_timer_t *timer, void *data), void *data)
 {
 	event_timer_t *timer;
+	DEBUG("Adding new timer");
 
 	IF_FALSE_RETVAL(timeout >= 0, NULL);
 	IF_NULL_RETVAL(func, NULL);
@@ -251,7 +253,7 @@ event_add_timer(event_timer_t *timer)
 
 	event_timer_list = list_append(event_timer_list, timer);
 
-	TRACE("Added timer event %p (func=%p, data=%p, diff=%u.%09us, repeat=%d)", (void *)timer,
+	DEBUG("Added timer event %p (func=%p, data=%p, diff=%u.%09us, repeat=%d)", (void *)timer,
 	      CAST_FUNCPTR_VOIDPTR timer->func, timer->data, (unsigned)timer->diff.tv_sec,
 	      (unsigned)timer->diff.tv_nsec, timer->repeat);
 }
@@ -261,10 +263,10 @@ event_remove_timer(event_timer_t *timer)
 {
 	IF_NULL_RETURN(timer);
 
-	TRACE("Removing timer event %p from list %p", (void *)timer, (void *)event_timer_list);
+	DEBUG("Removing timer event %p from list %p", (void *)timer, (void *)event_timer_list);
 	event_timer_list = list_remove(event_timer_list, timer);
 
-	TRACE("Removed timer event %p (func=%p, data=%p, diff=%u.%09us, repeat=%d)", (void *)timer,
+	DEBUG("Removed timer event %p (func=%p, data=%p, diff=%u.%09us, repeat=%d)", (void *)timer,
 	      CAST_FUNCPTR_VOIDPTR timer->func, timer->data, (unsigned)timer->diff.tv_sec,
 	      (unsigned)timer->diff.tv_nsec, timer->repeat);
 }
@@ -407,7 +409,7 @@ event_epoll(int timeout)
 	struct epoll_event epoll_events[128];
 	int n, i;
 
-	TRACE("Calling epoll_wait with timeout=%ums", timeout);
+	DEBUG("Calling epoll_wait with timeout=%ums", timeout);
 	n = epoll_wait(event_epoll_fd(0), epoll_events, ELEMENTSOF(epoll_events), timeout);
 	if (n < 0) {
 		if (errno == EINTR) // caused by suspend (no real error)

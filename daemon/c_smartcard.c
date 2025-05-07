@@ -70,7 +70,7 @@
 #define TOKEN_IS_PAIRED_FILE_NAME "token_is_paired"
 
 #define USB_TOKEN_ATTACH_TIMEOUT 500
-
+#define USB_TOKEN_ATTACH_RETRIES 5
 extern char *scd_sock_path; // defined in scd.c
 
 typedef struct c_smartcard {
@@ -900,14 +900,12 @@ c_smartcard_token_attach_cb(event_timer_t *timer, void *data)
 {
 	ASSERT(data);
 	c_smartcard_t *smartcard = data;
+	DEBUG("Trying to initialize USB token");
 
-	// initialize the USB token
-	int block_return = c_smartcard_token_init(smartcard);
-
-	if (block_return) {
-		ERROR("Failed to initialize token (might already be initialized)");
-	}
-
+	// Remove timer when token is initialized
+	IF_TRUE_GOTO(c_smartcard_token_init(smartcard) >= 0, out);
+	WARN("Failed to initialize token (might already be initialized)");
+out:
 	event_remove_timer(timer);
 	event_timer_free(timer);
 }
@@ -922,7 +920,7 @@ c_smartcard_token_attach(void *smartcardp)
 	      smartcard->token_serial);
 
 	// give usb device some time to register
-	event_timer_t *e = event_timer_new(USB_TOKEN_ATTACH_TIMEOUT, 1, c_smartcard_token_attach_cb,
+	event_timer_t *e = event_timer_new(USB_TOKEN_ATTACH_TIMEOUT, USB_TOKEN_ATTACH_RETRIES, c_smartcard_token_attach_cb,
 					   smartcard);
 	event_add_timer(e);
 
