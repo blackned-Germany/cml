@@ -357,7 +357,7 @@ c_hotplug_handle_usb_hotplug(unsigned actions, uevent_event_t *event, c_hotplug_
 
 					// give devfs some time to create device node for token
 					event_timer_t *e =
-						event_timer_new(100, EVENT_TIMER_REPEAT_FOREVER,
+						event_timer_new(50, EVENT_TIMER_REPEAT_FOREVER,
 								c_hotplug_token_timer_cb,
 								token_data);
 					event_add_timer(e);

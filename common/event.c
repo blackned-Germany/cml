@@ -407,7 +407,7 @@ event_epoll(int timeout)
 	struct epoll_event epoll_events[128];
 	int n, i;
 
-	TRACE("Calling epoll_wait with timeout=%ums", timeout);
+	DEBUG("Calling epoll_wait with timeout=%ums", timeout);
 	n = epoll_wait(event_epoll_fd(0), epoll_events, ELEMENTSOF(epoll_events), timeout);
 	if (n < 0) {
 		if (errno == EINTR) // caused by suspend (no real error)
