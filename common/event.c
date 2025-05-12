@@ -851,8 +851,8 @@ event_loop(void)
 		event_signal_handler();
 
 		timeout = event_timeout();
-		if (!event_epoll(timeout))
-			event_timeout_handler();
+		event_epoll(timeout);
+		event_timeout_handler();
 
 		TRACE("Handled event");
 	}
