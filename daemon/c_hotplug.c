@@ -676,6 +676,13 @@ c_hotplug_coldplug_usbdevs(void *hotplugp)
 			DEBUG("Device of type token is not mapped into the container");
 			continue;
 		} else if (container_usbdev_get_type(usbdev) == CONTAINER_USBDEV_TYPE_GENERIC) {
+			// TODO - The usbdev is added to the list of global devices here. This interferes with assigning it to a container later. We need a workaround for that, or no assigned device will be recognized on initial startup
+			DEBUG("Initial: check mapping: %04x:%04x '%s' for %s bound device node %d:%d -> container %s",
+			      container_usbdev_get_id_vendor(usbdev), container_usbdev_get_id_product(usbdev), container_usbdev_get_i_serial(usbdev),
+			      (container_usbdev_is_assigned(usbdev)) ? "assign" : "allow",
+			      container_usbdev_get_major(usbdev), container_usbdev_get_minor(usbdev),
+			      container_get_name(hotplug->container));
+
 			c_hotplug_usbdev_allow(hotplug, usbdev);
 		} else {
 			ERROR("Unknown CONTAINER_USBDEV_TYPE. Device has not been configured!");
