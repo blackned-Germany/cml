@@ -286,6 +286,8 @@ c_hotplug_handle_usb_hotplug(unsigned actions, uevent_event_t *event, c_hotplug_
 		uint16_t product_id = uevent_event_get_usb_product(event);
 		int major = uevent_event_get_major(event);
 		int minor = uevent_event_get_minor(event);
+		DEBUG("Handling USB device %04x:%04x '%s'",
+		      vendor_id, product_id, serial);
 
 		for (list_t *l = c_hotplug_token_list; l; l = l->next) {
 			container_usbdev_t *ud = l->data;
@@ -325,7 +327,7 @@ c_hotplug_handle_usb_hotplug(unsigned actions, uevent_event_t *event, c_hotplug_
 		for (list_t *l = container_get_usbdev_list(hotplug->container); l; l = l->next) {
 			container_usbdev_t *ud = l->data;
 
-			TRACE("check mapping: %04x:%04x '%s' for %s bound device node %d:%d -> container %s",
+			DEBUG("check mapping: %04x:%04x '%s' for %s bound device node %d:%d -> container %s",
 			      vendor_id, product_id, serial,
 			      (container_usbdev_is_assigned(ud)) ? "assign" : "allow",
 			      uevent_event_get_major(event), uevent_event_get_minor(event),
@@ -410,11 +412,11 @@ c_hotplug_handle_event_cb(unsigned actions, uevent_event_t *event, void *data)
 	char type = (!strcmp(devtype, "disk") || !strcmp(devtype, "partition")) ? 'b' : 'c';
 
 	if (!container_is_device_allowed(hotplug->container, type, major, minor)) {
-		TRACE("skip not allowed device (%c %d:%d) for container %s", type, major, minor,
+		DEBUG("skip not allowed device (%c %d:%d) for container %s", type, major, minor,
 		      container_get_name(hotplug->container));
 		return;
 	} else {
-		TRACE("processing allowed device (%c %d:%d) for container %s", type, major, minor,
+		DEBUG("processing allowed device (%c %d:%d) for container %s", type, major, minor,
 		      container_get_name(hotplug->container));
 	}
 
@@ -634,6 +636,8 @@ c_hotplug_usbdev_allow(c_hotplug_t *hotplug, container_usbdev_t *usbdev)
 		ERROR("Failed to find usbdev in sysfs");
 		return -1;
 	}
+	DEBUG("Allowed token device node %d:%d -> container %s", major, minor,
+	     container_get_name(hotplug->container));
 
 	if (-1 == container_device_allow(hotplug->container, 'c',
 					 container_usbdev_get_major(usbdev),
@@ -669,10 +673,10 @@ c_hotplug_coldplug_usbdevs(void *hotplugp)
 		// be used for multiple containers and a container should not be able to log the pin of
 		// another container
 		if (container_usbdev_get_type(usbdev) == CONTAINER_USBDEV_TYPE_PIN_ENTRY) {
-			TRACE("Device of type pin reader is not mapped into the container");
+			DEBUG("Device of type pin reader is not mapped into the container");
 			continue;
 		} else if (container_usbdev_get_type(usbdev) == CONTAINER_USBDEV_TYPE_TOKEN) {
-			TRACE("Device of type token is not mapped into the container");
+			DEBUG("Device of type token is not mapped into the container");
 			continue;
 		} else if (container_usbdev_get_type(usbdev) == CONTAINER_USBDEV_TYPE_GENERIC) {
 			c_hotplug_usbdev_allow(hotplug, usbdev);
