@@ -327,6 +327,7 @@ c_cgroups_list_contains_match(const list_t *list, const int *dev)
 static void
 c_cgroups_add_allowed(c_cgroups_t *cgroups, const int *dev)
 {
+	DEBUG("Allowing device %d", *dev);
 	c_cgroups_list_add(&global_allowed_devs_list, dev);
 	c_cgroups_list_add(&cgroups->allowed_devs, dev);
 }
@@ -334,6 +335,7 @@ c_cgroups_add_allowed(c_cgroups_t *cgroups, const int *dev)
 static void
 c_cgroups_add_assigned(c_cgroups_t *cgroups, const int *dev)
 {
+	DEBUG("Assigning device %d", *dev);
 	c_cgroups_list_add(&global_assigned_devs_list, dev);
 	c_cgroups_list_add(&cgroups->assigned_devs, dev);
 }

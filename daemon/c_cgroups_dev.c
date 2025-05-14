@@ -582,15 +582,23 @@ c_cgroups_dev_item_uses_wildcard(const c_cgroups_dev_item_t *dev_item)
 static c_cgroups_dev_item_t *
 c_cgroups_dev_list_match(const list_t *list, const c_cgroups_dev_item_t *dev_item)
 {
+	DEBUG("Specific element: %c %d:%d rwm", dev_item->type, dev_item->major, dev_item->minor);
 	for (const list_t *l = list; l; l = l->next) {
 		c_cgroups_dev_item_t *dev_elem = l->data;
-		if ((dev_elem->major == -1) || (dev_item->major == -1))
+		DEBUG("Global: %c %d:%d rwm", dev_elem->type, dev_elem->major, dev_elem->minor);
+		if ((dev_elem->major == -1) || (dev_item->major == -1)) {
+			DEBUG("First");
 			return dev_elem;
-		if (dev_elem->major != dev_item->major)
+		}
+		if (dev_elem->major != dev_item->major) {
+			DEBUG("Second");
 			continue;
+		}
 		if ((dev_item->minor == -1) || (dev_elem->minor == -1) ||
-		    (dev_item->minor == dev_elem->minor))
+		    (dev_item->minor == dev_elem->minor)) {
+			DEBUG("Third");
 			return dev_elem;
+		}
 	}
 	return NULL;
 }
@@ -981,7 +989,9 @@ c_cgroups_dev_device_allow(void *cgroups_devp, char type, int major, int minor, 
 
 	int ret;
 
+	DEBUG("Deny device: %c %d:%d rwm", type, major, minor);
 	IF_TRUE_RETVAL((type != 'c') && (type != 'b'), -1);
+	DEBUG("Deny device: %c %d:%d rwm", type, major, minor);
 
 	char *rule = mem_printf("%c %d:%d rwm", type, major, minor);
 	if (assign)
@@ -1002,6 +1012,7 @@ c_cgroups_dev_device_deny(void *cgroups_devp, char type, int major, int minor)
 	int ret;
 
 	IF_TRUE_RETVAL((type != 'c') && (type != 'b'), -1);
+	DEBUG("Deny device: %c %d:%d rwm", type, major, minor);
 
 	char *rule = mem_printf("%c %d:%d rwm", type, major, minor);
 	ret = c_cgroups_dev_deny(cgroups_dev, rule);
