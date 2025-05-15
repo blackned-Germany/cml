@@ -384,7 +384,7 @@ c_cgroups_devices_allow(void *cgroupsp, const char *rule)
 	}
 
 	char type = dev[0] == DEVCG_TYPE_BLOCK ? 'b' : 'c';
-	TRACE("Allowed device %c %d:%d for container %s", type, dev[1], dev[2],
+	DEBUG("Allowed device %c %d:%d for container %s", type, dev[1], dev[2],
 	      container_get_name(cgroups->container));
 
 	c_cgroups_add_allowed(cgroups, dev);
@@ -405,11 +405,13 @@ c_cgroups_devices_assign(void *cgroupsp, const char *rule)
 		mem_free0(dev);
 		return -1;
 	}
+	DEBUG("Checked if already allowed");
 
 	if (c_cgroups_allow_rule(cgroups, rule) < 0) {
 		mem_free0(dev);
 		return -1;
 	}
+	DEBUG("Added allow rule");
 
 	c_cgroups_add_allowed(cgroups, dev);
 	c_cgroups_add_assigned(cgroups, dev);

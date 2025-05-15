@@ -865,7 +865,13 @@ c_cgroups_dev_start_post_clone(void *cgroups_devp)
 		      container_get_description(cgroups_dev->container));
 		return -COMPARTMENT_ERROR_CGROUPS;
 	}
-	DEBUG("Applied containers assign list");
+	DEBUG("Applied containers assign list - dev");
+	int i = 0;
+	while (container_dev_assignlist[i] != NULL) {
+		printf("Item: %d: %s\n", i, container_dev_assignlist[i]);
+		i++;
+	}
+
 
 	for (list_t *l = cgroups_dev->denied_devs; l; l = l->next) {
 		c_cgroups_dev_item_t *dl = l->data;
@@ -994,10 +1000,14 @@ c_cgroups_dev_device_allow(void *cgroups_devp, char type, int major, int minor, 
 	DEBUG("Deny device: %c %d:%d rwm", type, major, minor);
 
 	char *rule = mem_printf("%c %d:%d rwm", type, major, minor);
-	if (assign)
+	if (assign) {
+		DEBUG("Device is assigned");
 		ret = c_cgroups_dev_assign(cgroups_dev, rule);
-	else
+	}
+	else {
+		DEBUG("Device is allowed");
 		ret = c_cgroups_dev_allow(cgroups_dev, rule);
+	}
 
 	mem_free0(rule);
 	return ret;
