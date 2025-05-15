@@ -627,24 +627,30 @@ c_cgroups_dev_list_remove(list_t **list, const c_cgroups_dev_item_t *dev_item)
 static void
 c_cgroups_dev_add_allowed(c_cgroups_dev_t *cgroups_dev, const c_cgroups_dev_item_t *dev_item)
 {
+	DEBUG("Add to global_allowed_devs_list");
 	c_cgroups_dev_list_add(&global_allowed_devs_list, dev_item);
 
 	// only add items once to container internal list
+	DEBUG("Check if it is already added to cgroups_dev->allowed_devs");
 	if (c_cgroups_dev_list_match(cgroups_dev->allowed_devs, dev_item))
 		return;
 
+	DEBUG("Add to cgroups_dev->allowed_devs");
 	c_cgroups_dev_list_add(&cgroups_dev->allowed_devs, dev_item);
 }
 
 static void
 c_cgroups_dev_add_assigned(c_cgroups_dev_t *cgroups_dev, const c_cgroups_dev_item_t *dev_item)
 {
+	DEBUG("Add to global_assigned_devs_list");
 	c_cgroups_dev_list_add(&global_assigned_devs_list, dev_item);
 
+	DEBUG("Check if it is already added to cgroups_dev->assigned_devs");
 	// only add items once to container internal list
 	if (c_cgroups_dev_list_match(cgroups_dev->assigned_devs, dev_item))
 		return;
 
+	DEBUG("Add to cgroups_dev->assigned_devs");
 	c_cgroups_dev_list_add(&cgroups_dev->assigned_devs, dev_item);
 }
 
