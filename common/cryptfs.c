@@ -568,6 +568,8 @@ cryptfs_setup_volume_new(const char *label, const char *real_blkdev, const char 
 	int fd;
 	// The file system size in sectors
 	uint64_t fs_size;
+	size_t crypto_key_len = 0;
+	char *crypto_key = NULL;
 
 	/* Update the fs_size field to be the size of the volume */
 	if ((fd = open(real_blkdev, O_RDONLY)) < 0) {
@@ -594,17 +596,22 @@ cryptfs_setup_volume_new(const char *label, const char *real_blkdev, const char 
 							  fs_size);
 
 	// do dmcrypt device setup only
+	crypto_key_len = strlen(key);
+	if (crypto_key_len < CRYPTO_HEXKEY_LEN) {
+		WARN("strlen(key) != CRYPTO_HEXKEY_LEN [%d]) using len=%zu",
+			CRYPTO_HEXKEY_LEN, crypto_key_len);
+	}
+	crypto_key = crypto_key_len > 0 ? mem_strndup(key, crypto_key_len) : NULL;
+	INFO("Using key with size %lu byte for device %s", crypto_key_len / 2, real_blkdev);
 
-	/* Use the first 128 hex digits (64 byte) of master key for 512 bit xts mode */
-	IF_TRUE_RETVAL(strlen(key) < CRYPTO_HEXKEY_LEN, NULL);
-	char enc_key[CRYPTO_HEXKEY_LEN + 1];
-	memcpy(enc_key, key, CRYPTO_HEXKEY_LEN);
-	enc_key[CRYPTO_HEXKEY_LEN] = '\0';
+	int ret = create_crypto_blk_dev(real_blkdev, crypto_key, label, fs_size, false);
 
-	if (create_crypto_blk_dev(real_blkdev, enc_key, label, fs_size, false) < 0)
-		return NULL;
+	if (crypto_key) {
+		mem_memset0(crypto_key, crypto_key_len);
+		mem_free0(crypto_key);
+	}
 
-	return create_device_node(label);
+	return ret < 0 ? NULL : create_device_node(label);
 }
 
 int
