@@ -813,7 +813,13 @@ compartment_sigchld_early_cb(UNUSED int signum, event_signal_t *sig, void *data)
 			if (compartment->pid == -1)
 				compartment_cleanup(compartment, false);
 
-			compartment_set_state(compartment, COMPARTMENT_STATE_STOPPED);
+			INFO("exit status: %d, %d", WEXITSTATUS(status), status);
+
+			if ((WIFEXITED(status) &&
+			     WEXITSTATUS(status) == COMPARTMENT_ERROR_VOL_CORRUPTED))
+				compartment_set_state(compartment, COMPARTMENT_STATE_ZOMBIE);
+			else
+				compartment_set_state(compartment, COMPARTMENT_STATE_STOPPED);
 		}
 	}
 
@@ -1026,7 +1032,7 @@ error:
 	if (compartment_close_all_fds()) {
 		WARN("Closing all file descriptors in compartment start error failed");
 	}
-	return ret; // exit the child process
+	return ret < 0 ? -ret : ret; // exit the child process
 }
 
 static int
@@ -1125,7 +1131,7 @@ error:
 	if (compartment_close_all_fds()) {
 		WARN("Closing all file descriptors in compartment start error failed");
 	}
-	return ret; // exit the child process
+	return ret < 0 ? -ret : ret; // exit the child process
 }
 
 static void
@@ -1222,8 +1228,8 @@ compartment_start_post_clone_cb(int fd, unsigned events, event_io_t *io, void *d
 	compartment_free_key(compartment);
 
 	/* Notify child to do its exec */
-	char msg_go = COMPARTMENT_START_SYNC_MSG_GO;
-	if (write(fd, &msg_go, 1) < 0) {
+	msg = COMPARTMENT_START_SYNC_MSG_GO;
+	if (write(fd, &msg, 1) < 0) {
 		WARN_ERRNO("write to sync socket failed");
 		goto error;
 	}
@@ -1253,8 +1259,8 @@ compartment_start_post_clone_cb(int fd, unsigned events, event_io_t *io, void *d
 
 error_pre_exec:
 	DEBUG("A pre-exec compartment start error occured, stopping compartment");
-	char msg_stop = COMPARTMENT_START_SYNC_MSG_STOP;
-	if (write(fd, &msg_stop, 1) < 0) {
+	msg = COMPARTMENT_START_SYNC_MSG_STOP;
+	if (write(fd, &msg, 1) < 0) {
 		WARN_ERRNO("write to sync socket failed");
 		goto error;
 	}
@@ -1287,8 +1293,8 @@ static void
 compartment_start_post_clone_early_cb(int fd, unsigned events, event_io_t *io, void *data)
 {
 	ASSERT(data);
-	int ret = 0;
 
+	char msg;
 	compartment_t *compartment = data;
 
 	DEBUG("Received event from child process %u", events);
@@ -1343,15 +1349,15 @@ compartment_start_post_clone_early_cb(int fd, unsigned events, event_io_t *io, v
 		if (NULL == module->start_post_clone)
 			continue;
 
-		if ((ret = module->start_post_clone(c_mod->instance)) < 0) {
+		if (module->start_post_clone(c_mod->instance) < 0) {
 			goto error_post_clone;
 		}
 	}
 
 	/*********************************************************/
 	/* NOTIFY CHILD TO START */
-	char msg_go = COMPARTMENT_START_SYNC_MSG_GO;
-	if (write(compartment->sync_sock_parent, &msg_go, 1) < 0) {
+	msg = COMPARTMENT_START_SYNC_MSG_GO;
+	if (write(compartment->sync_sock_parent, &msg, 1) < 0) {
 		WARN_ERRNO("write to sync socket failed");
 		goto error_post_clone;
 	}
@@ -1366,10 +1372,8 @@ error_pre_clone:
 	return;
 
 error_post_clone:
-	if (ret == 0)
-		ret = COMPARTMENT_ERROR;
-	char msg_stop = COMPARTMENT_START_SYNC_MSG_STOP;
-	if (write(compartment->sync_sock_parent, &msg_stop, 1) < 0) {
+	msg = COMPARTMENT_START_SYNC_MSG_STOP;
+	if (write(compartment->sync_sock_parent, &msg, 1) < 0) {
 		WARN_ERRNO("write to sync socket failed");
 		compartment_kill(compartment);
 	}
@@ -1481,7 +1485,7 @@ error_pre_clone:
 
 error_post_clone:
 	if (ret == 0)
-		ret = COMPARTMENT_ERROR;
+		ret = -COMPARTMENT_ERROR;
 	char msg_stop = COMPARTMENT_START_SYNC_MSG_STOP;
 	if (write(compartment->sync_sock_parent, &msg_stop, 1) < 0) {
 		WARN_ERRNO("write to sync socket failed");
