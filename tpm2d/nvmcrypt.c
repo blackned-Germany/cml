@@ -227,7 +227,8 @@ nvmcrypt_dm_setup(const char *device_path, const char *fde_pw, int max_key_len)
 	// cryptfs_setup_volume_new expects an ascii string as key
 	char *ascii_key = convert_bin_to_hex_new(key, key_len);
 
-	INFO("Setting up crypto device mapping for %s to %s with key size %d", device_path, dev_name, max_key_len);
+	INFO("Setting up crypto device mapping for %s to %s with key size %d", device_path,
+	     dev_name, max_key_len);
 
 	char *mapped_path = cryptfs_setup_volume_new(dev_name, device_path, ascii_key, NULL);
 

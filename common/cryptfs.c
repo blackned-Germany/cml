@@ -598,8 +598,8 @@ cryptfs_setup_volume_new(const char *label, const char *real_blkdev, const char 
 	// do dmcrypt device setup only
 	crypto_key_len = strlen(key);
 	if (crypto_key_len < CRYPTO_HEXKEY_LEN) {
-		WARN("strlen(key) != CRYPTO_HEXKEY_LEN [%d]) using len=%zu",
-			CRYPTO_HEXKEY_LEN, crypto_key_len);
+		WARN("strlen(key) != CRYPTO_HEXKEY_LEN [%d]) using len=%zu", CRYPTO_HEXKEY_LEN,
+		     crypto_key_len);
 	}
 	crypto_key = crypto_key_len > 0 ? mem_strndup(key, crypto_key_len) : NULL;
 	INFO("Using key with size %lu byte for device %s", crypto_key_len / 2, real_blkdev);
