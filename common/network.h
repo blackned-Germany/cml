@@ -42,6 +42,8 @@
 #define IFF_DOWN 0x0
 #endif
 
+#define MAC_ADDR_LEN 6
+
 /**
  * Set address of an network interface
  */
@@ -253,7 +255,7 @@ network_rename_ifi(const char *old_ifi_name, const char *new_ifi_name);
  * @return 0 on success, -1 on error
  */
 int
-network_str_to_mac_addr(const char *mac_str, uint8_t mac[6]);
+network_str_to_mac_addr(const char *mac_str, uint8_t mac[MAC_ADDR_LEN]);
 
 /**
  * Constructs a String representation for a mac address.
@@ -261,7 +263,7 @@ network_str_to_mac_addr(const char *mac_str, uint8_t mac[6]);
  * @return The string representing the mac, NULL on error
  */
 char *
-network_mac_addr_to_str_new(uint8_t mac[6]);
+network_mac_addr_to_str_new(uint8_t mac[MAC_ADDR_LEN]);
 
 /**
  * Walk through sysfs to find the if name, e.g., shown by ip addr, to the corresponding
@@ -270,7 +272,7 @@ network_mac_addr_to_str_new(uint8_t mac[6]);
  * @return The name of the interface
  */
 char *
-network_get_ifname_by_addr_new(uint8_t mac[6]);
+network_get_ifname_by_addr_new(uint8_t mac[MAC_ADDR_LEN]);
 
 /**
  * Get mac address for network interface given by name.
@@ -279,7 +281,7 @@ network_get_ifname_by_addr_new(uint8_t mac[6]);
  * @return 0 on success, -1 on error
  */
 int
-network_get_mac_by_ifname(const char *ifname, uint8_t mac[6]);
+network_get_mac_by_ifname(const char *ifname, uint8_t mac[MAC_ADDR_LEN]);
 
 /**
  * Create a Linux bridge device.
@@ -323,6 +325,6 @@ network_iptables_phys_deny(const char *chain, const char *netif, bool add);
  * by its mac address on the physical (bridge-port) interface netif.
  */
 int
-network_phys_allow_mac(const char *chain, const char *netif, uint8_t mac[6], bool add);
+network_phys_allow_mac(const char *chain, const char *netif, uint8_t mac[MAC_ADDR_LEN], bool add);
 
 #endif /* NETWORK_H */
