@@ -584,6 +584,15 @@ cmld_container_config_sync_cb(container_t *container, container_callback_t *cb, 
 		return;
 	}
 
+	/* Config file may have been deleted by cmld_container_destroy_cb
+	 * which fired before us on the same state transition. */
+	if (!file_exists(container_get_config_filename(container))) {
+		DEBUG("Config file removed, skipping reload for %s",
+		      container_get_description(container));
+		container_unregister_observer(container, cb);
+		return;
+	}
+
 	// in error case reload may destroy container object thus dup uuid
 	uuid_t *c_uuid = uuid_new(uuid_string(container_get_uuid(container)));
 
