@@ -1115,6 +1115,19 @@ network_get_ifname_by_addr_new(uint8_t mac[MAC_ADDR_LEN])
 	return NULL;
 }
 
+bool
+network_iface_exists(const char *iface_name)
+{
+	IF_NULL_RETVAL(iface_name, false);
+
+	char *sysfs_path = mem_printf("/sys/class/net/%s", iface_name);
+	bool exists = file_exists(sysfs_path);
+
+	mem_free0(sysfs_path);
+
+	return exists;
+}
+
 int
 network_create_bridge(const char *name)
 {

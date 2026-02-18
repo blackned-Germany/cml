@@ -284,6 +284,14 @@ int
 network_get_mac_by_ifname(const char *ifname, uint8_t mac[MAC_ADDR_LEN]);
 
 /**
+ * Check if a network interface exists in the current (root) namespace.
+ * @param iface_name kernel name of the interface
+ * @return true if the interface exists, false otherwise
+ */
+bool
+network_iface_exists(const char *iface_name);
+
+/**
  * Create a Linux bridge device.
  */
 int
