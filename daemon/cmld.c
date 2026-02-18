@@ -2014,6 +2014,18 @@ void
 cmld_netif_phys_add_by_name(const char *if_name)
 {
 	IF_NULL_RETURN(if_name);
+
+	/* Only track interfaces that are actually present in root ns.
+	 * This prevents races where an interface transiently passes
+	 * through root ns (e.g. during reclaim core container -> root -> service container)
+	 * and a deferred event tries to re-add it after it has
+	 * already been moved to a container's netns.
+	 */
+	if (!network_iface_exists(if_name)) {
+		DEBUG("Not adding '%s' to available phys netifs (not in root ns)", if_name);
+		return;
+	}
+
 	INFO("Adding '%s' to global available physical netifs", if_name);
 
 	for (list_t *l = cmld_netif_phys_list; l; l = l->next) {
@@ -2074,6 +2086,91 @@ cmld_reboot_device(void)
 }
 
 static bool
+cmld_pnet_cfg_list_contains(list_t *pnet_cfg_list, const char *pnet_name)
+{
+	for (list_t *l = pnet_cfg_list; l; l = l->next) {
+		container_pnet_cfg_t *cfg = l->data;
+		if (strcmp(cfg->pnet_name, pnet_name) == 0)
+			return true;
+	}
+	return false;
+}
+
+/**
+ * Synchronize network interfaces after config update.
+ * Interfaces ADDED to config: remove from core container if implicit, add to service container if running
+ * Interfaces REMOVED from config: remove from service container, return to core container as implicit
+ */
+static int
+cmld_sync_container_net_ifaces(container_t *container, list_t *new_pnet_cfg_list)
+{
+	ASSERT(container);
+
+	list_t *current_list = container_get_pnet_cfg_list(container);
+	container_t *c0 = cmld_containers_get_c0();
+	bool c0_is_up = c0 && container_is_stoppable(c0);
+	bool service_container_is_up = container_is_stoppable(container);
+
+	/*
+	 * Find interfaces REMOVED from config (in current but not in new).
+	 * These become unassigned and should move to core container as implicit.
+	 * Both lists use the same pnet_name format, so strcmp is sufficient.
+	 */
+	for (list_t *l = current_list; l; l = l->next) {
+		container_pnet_cfg_t *cfg = l->data;
+		if (cmld_pnet_cfg_list_contains(new_pnet_cfg_list, cfg->pnet_name))
+			continue;
+
+		/*
+		 * Save pnet_name before remove call: c_net_remove_interface
+		 * frees its internal copy, and cfg must not be used after.
+		 */
+		char *pnet_name = mem_strdup(cfg->pnet_name);
+
+		INFO("Interface %s removed from config, now unassigned (implicit to core container)",
+		     pnet_name);
+
+		if (service_container_is_up)
+			container_remove_net_interface(container, pnet_name);
+
+		if (c0_is_up) {
+			container_pnet_cfg_t *c0_cfg =
+				container_pnet_cfg_new(pnet_name, false, NULL);
+			if (container_add_net_interface(c0, c0_cfg) < 0)
+				container_pnet_cfg_free(c0_cfg);
+		}
+		mem_free0(pnet_name);
+	}
+
+	/* Find interfaces ADDED to config (in new but not in current). */
+	for (list_t *l = new_pnet_cfg_list; l; l = l->next) {
+		container_pnet_cfg_t *new_cfg = l->data;
+		if (cmld_pnet_cfg_list_contains(current_list, new_cfg->pnet_name))
+			continue;
+
+		INFO("Interface %s added to config, now assigned to service container",
+		     new_cfg->pnet_name);
+
+		if (service_container_is_up) {
+			/* c_net_add_interface handles reclaim from c0 */
+			if (container_add_net_interface(container, new_cfg) < 0)
+				WARN("Failed to assign %s to service container",
+				     new_cfg->pnet_name);
+		} else if (c0_is_up) {
+			/* Eagerly free interface from c0 so it's in root ns
+			 * when the service container starts */
+			if (!container_is_iface_in_config(c0, new_cfg->pnet_name)) {
+				container_remove_net_interface(c0, new_cfg->pnet_name);
+			} else {
+				WARN("Interface %s is explicitly assigned to core container",
+				     new_cfg->pnet_name);
+			}
+		}
+	}
+	return 0;
+}
+
+static bool
 cmld_container_has_token_changed(container_t *container, container_config_t *conf)
 {
 	ASSERT(container);
@@ -2110,6 +2207,14 @@ cmld_update_config(container_t *container, uint8_t *buf, size_t buf_len, uint8_t
 
 	ret = container_config_write(conf);
 	container_set_sync_state(container, false);
+
+	// Sync network interfaces based on config changes
+	list_t *new_pnet_cfg_list = container_config_get_net_ifaces_list_new(conf);
+	if (cmld_sync_container_net_ifaces(container, new_pnet_cfg_list) < 0) {
+		WARN("Failed to sync network interfaces for %s", container_get_name(container));
+	}
+	// Update in-memory pnet_cfg_list so subsequent diffs use current state
+	container_set_pnet_cfg_list(container, new_pnet_cfg_list);
 
 	// Wipe container if USB token serial changed
 	if (cmld_container_has_token_changed(container, conf)) {
@@ -2148,24 +2253,7 @@ cmld_container_add_net_iface(container_t *container, container_pnet_cfg_t *pnet_
 	ASSERT(container);
 	IF_NULL_RETVAL(pnet_cfg, -1);
 
-	int res = 0;
-	container_t *c0 = cmld_containers_get_c0();
-	bool c0_is_up = c0 ? container_is_stoppable(c0) : false;
-
-	if (c0_is_up) {
-		if (c0 == container) {
-			// if interface should be added to c0 just add it.
-			res = container_add_net_interface(container, pnet_cfg);
-			return res;
-		}
-
-		/* if c0 is running the interface is occupied by c0, thus we have
-		 * to take it back to cml first.
-		 */
-		res = container_remove_net_interface(c0, pnet_cfg->pnet_name);
-	}
-
-	res |= container_add_net_interface(container, pnet_cfg);
+	int res = container_add_net_interface(container, pnet_cfg);
 	if (res || !persistent)
 		return res;
 

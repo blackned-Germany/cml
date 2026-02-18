@@ -29,6 +29,7 @@
 #include "common/file.h"
 #include "common/dir.h"
 #include "common/uuid.h"
+#include "common/network.h"
 #include "compartment.h"
 
 #include <limits.h>
@@ -977,6 +978,50 @@ container_get_pnet_cfg_list(const container_t *container)
 {
 	ASSERT(container);
 	return container->pnet_cfg_list;
+}
+
+bool
+container_is_iface_in_config(const container_t *container, const char *pnet_name)
+{
+	ASSERT(container);
+	ASSERT(pnet_name);
+
+	uint8_t pnet_mac[MAC_ADDR_LEN];
+	bool pnet_is_mac = (network_str_to_mac_addr(pnet_name, pnet_mac) != -1);
+
+	/*
+	 * If pnet_name is a kernel name, resolve its MAC for cross-format matching
+	 * (kernel name query vs MAC config entry).
+	 */
+	uint8_t if_mac[MAC_ADDR_LEN];
+	bool have_if_mac = (!pnet_is_mac && network_get_mac_by_ifname(pnet_name, if_mac) == 0);
+
+	for (list_t *l = container->pnet_cfg_list; l; l = l->next) {
+		container_pnet_cfg_t *cfg = l->data;
+
+		if (strcmp(cfg->pnet_name, pnet_name) == 0)
+			return true;
+
+		uint8_t cfg_mac[MAC_ADDR_LEN];
+		if (network_str_to_mac_addr(cfg->pnet_name, cfg_mac) != -1) {
+			if (pnet_is_mac && memcmp(pnet_mac, cfg_mac, MAC_ADDR_LEN) == 0)
+				return true;
+			if (have_if_mac && memcmp(if_mac, cfg_mac, MAC_ADDR_LEN) == 0)
+				return true;
+		}
+	}
+	return false;
+}
+
+void
+container_set_pnet_cfg_list(container_t *container, list_t *pnet_cfg_list)
+{
+	ASSERT(container);
+	for (list_t *l = container->pnet_cfg_list; l; l = l->next) {
+		container_pnet_cfg_free(l->data);
+	}
+	list_delete(container->pnet_cfg_list);
+	container->pnet_cfg_list = pnet_cfg_list;
 }
 
 list_t *

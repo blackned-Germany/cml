@@ -280,6 +280,16 @@ container_get_usb_pin_entry(const container_t *container);
 list_t *
 container_get_pnet_cfg_list(const container_t *container);
 
+/**
+ * Checks if a network interface is explicitly in a container's config.
+ * Handles cross-format matching (kernel name vs MAC address).
+ */
+bool
+container_is_iface_in_config(const container_t *container, const char *pnet_name);
+
+void
+container_set_pnet_cfg_list(container_t *container, list_t *pnet_cfg_list);
+
 list_t *
 container_get_vnet_cfg_list(const container_t *container);
 
