@@ -61,6 +61,24 @@ typedef struct {
 
 static list_t *hotplug_known_names_list = NULL;
 
+static hotplug_netif_name_t *
+hotplug_netif_name_new(const uint8_t mac[MAC_ADDR_LEN], const char *ifname)
+{
+	hotplug_netif_name_t *entry = mem_new0(hotplug_netif_name_t, 1);
+	memcpy(entry->mac, mac, MAC_ADDR_LEN);
+	entry->ifname = mem_strdup(ifname);
+	return entry;
+}
+
+static void
+hotplug_netif_name_free(hotplug_netif_name_t *entry)
+{
+	IF_NULL_RETURN(entry);
+	if (entry->ifname)
+		mem_free0(entry->ifname);
+	mem_free0(entry);
+}
+
 static void
 hotplug_register_name(const uint8_t mac[MAC_ADDR_LEN], const char *ifname)
 {
@@ -74,9 +92,7 @@ hotplug_register_name(const uint8_t mac[MAC_ADDR_LEN], const char *ifname)
 			return;
 	}
 
-	hotplug_netif_name_t *entry = mem_new0(hotplug_netif_name_t, 1);
-	memcpy(entry->mac, mac, MAC_ADDR_LEN);
-	entry->ifname = mem_strdup(ifname);
+	hotplug_netif_name_t *entry = hotplug_netif_name_new(mac, ifname);
 
 	char mac_str[MAC_STR_LEN];
 	network_mac_addr_to_str(mac, mac_str);
@@ -529,10 +545,7 @@ hotplug_cleanup()
 	uevent_uev_free(uevent_uev);
 
 	for (list_t *l = hotplug_known_names_list; l; l = l->next) {
-		hotplug_netif_name_t *entry = l->data;
-		if (entry->ifname)
-			mem_free0(entry->ifname);
-		mem_free0(entry);
+		hotplug_netif_name_free(l->data);
 	}
 	list_delete(hotplug_known_names_list);
 }
