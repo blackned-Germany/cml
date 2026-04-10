@@ -273,12 +273,10 @@ network_str_to_mac_addr(const char *mac_str, uint8_t mac[MAC_ADDR_LEN]);
 /**
  * Writes a string representation of a mac address into the provided buffer.
  * @param mac array to be converted
- * @param buf buffer to write the string into (must be at least MAC_STR_LEN bytes)
- * @param buf_len size of the buffer
- * @return 0 on success, -1 on error
+ * @param buf buffer to write the string into (must be MAC_STR_LEN bytes)
  */
-int
-network_mac_addr_to_str(const uint8_t mac[MAC_ADDR_LEN], char *buf, size_t buf_len);
+void
+network_mac_addr_to_str(const uint8_t mac[MAC_ADDR_LEN], char buf[MAC_STR_LEN]);
 
 /**
  * Constructs a String representation for a mac address.

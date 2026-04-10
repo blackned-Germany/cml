@@ -79,7 +79,7 @@ hotplug_register_name(const uint8_t mac[MAC_ADDR_LEN], const char *ifname)
 	entry->ifname = mem_strdup(ifname);
 
 	char mac_str[MAC_STR_LEN];
-	network_mac_addr_to_str(mac, mac_str, sizeof(mac_str));
+	network_mac_addr_to_str(mac, mac_str);
 	DEBUG("Registered persistent name '%s' for MAC %s", ifname, mac_str);
 
 	hotplug_known_names_list = list_append(hotplug_known_names_list, entry);
@@ -301,7 +301,7 @@ hotplug_netdev_move(uevent_event_t *event)
 		goto error;
 	}
 
-	network_mac_addr_to_str(iface_mac, macstr, sizeof(macstr));
+	network_mac_addr_to_str(iface_mac, macstr);
 
 	container_t *container = NULL;
 	container_pnet_cfg_t *pnet_cfg = NULL;
@@ -548,7 +548,7 @@ hotplug_register_netdev(container_t *container, container_pnet_cfg_t *pnet_cfg)
 	hotplug_container_netdev_mapping_list =
 		list_append(hotplug_container_netdev_mapping_list, mapping);
 	char macstr[MAC_STR_LEN];
-	network_mac_addr_to_str(mapping->mac, macstr, sizeof(macstr));
+	network_mac_addr_to_str(mapping->mac, macstr);
 
 	INFO("Registered netdev '%s' for container %s", macstr,
 	     container_get_name(mapping->container));
@@ -574,7 +574,7 @@ hotplug_unregister_netdev(container_t *container, uint8_t mac[MAC_ADDR_LEN])
 		list_remove(hotplug_container_netdev_mapping_list, mapping_to_remove);
 
 	char macstr[MAC_STR_LEN];
-	network_mac_addr_to_str(mapping_to_remove->mac, macstr, sizeof(macstr));
+	network_mac_addr_to_str(mapping_to_remove->mac, macstr);
 
 	INFO("Unregistered netdev '%s' for container %s", macstr,
 	     container_get_name(mapping_to_remove->container));

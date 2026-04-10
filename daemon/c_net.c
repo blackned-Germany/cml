@@ -532,7 +532,7 @@ c_net_mac_filter(const char *if_name, list_t *mac_whitelist, bool apply)
 		ret |= network_phys_allow_mac("FORWARD", if_name, mac, apply);
 		if (ret) {
 			char mac_str[MAC_STR_LEN];
-			network_mac_addr_to_str(mac, mac_str, sizeof(mac_str));
+			network_mac_addr_to_str(mac, mac_str);
 			ERROR("Failed to allow %s on %s", mac_str, if_name);
 			return -1;
 		}
@@ -727,7 +727,7 @@ c_net_add_interface(void *netp, container_pnet_cfg_t *pnet_cfg)
 	IF_NULL_RETVAL(if_name, -1);
 
 	char if_mac_str[MAC_STR_LEN];
-	network_mac_addr_to_str(if_mac, if_mac_str, sizeof(if_mac_str));
+	network_mac_addr_to_str(if_mac, if_mac_str);
 
 	if (!c_net_internal) {
 		IF_FALSE_GOTO_ERROR(cmld_netif_phys_remove_by_mac(if_mac), err);
@@ -1166,7 +1166,7 @@ c_net_start_post_clone(void *netp)
 		for (list_t *l = cmld_get_netif_phys_list(); l; l = l->next) {
 			uint8_t *mac = l->data;
 			char mac_str[MAC_STR_LEN];
-			network_mac_addr_to_str(mac, mac_str, sizeof(mac_str));
+			network_mac_addr_to_str(mac, mac_str);
 			container_pnet_cfg_t *cfg = container_pnet_cfg_new(mac_str, false, NULL);
 			net->pnet_mv_list = list_append(net->pnet_mv_list, cfg);
 		}
@@ -1187,7 +1187,7 @@ c_net_start_post_clone(void *netp)
 		for (list_t *l = net->hotplug_registered_mac_list; l; l = l->next) {
 			uint8_t *mac = l->data;
 			char mac_str[MAC_STR_LEN];
-			network_mac_addr_to_str(mac, mac_str, sizeof(mac_str));
+			network_mac_addr_to_str(mac, mac_str);
 
 			/* Skip if already claimed in pnet_mv_list */
 			bool already_claimed = false;
