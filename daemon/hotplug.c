@@ -438,14 +438,16 @@ hotplug_handle_uevent_cb(unsigned actions, uevent_event_t *event, UNUSED void *d
 			char *registered_if_name = network_get_ifname_by_addr_new(mapping->mac);
 
 			// Interface may be inside a container's netns and not visible
-			if (registered_if_name && !strcmp(if_name, registered_if_name)) {
-				found = true;
-				DEBUG("Found a hotplug mapping for netif: %s. Won't add to physical list",
-				      registered_if_name);
+			if (registered_if_name) {
+				if (!strcmp(if_name, registered_if_name)) {
+					found = true;
+					DEBUG("Found a hotplug mapping for netif: %s. Won't add to physical list",
+					      registered_if_name);
+					mem_free0(registered_if_name);
+					break;
+				}
 				mem_free0(registered_if_name);
-				break;
 			}
-			mem_free0(registered_if_name);
 		}
 
 		if (!found) {
@@ -514,8 +516,8 @@ hotplug_init()
 			// Register the cml-prefixed name as the persistent original name
 			if (if_name_new) {
 				hotplug_register_name(mac, if_name_new);
+				mem_free0(if_name_new);
 			}
-			mem_free0(if_name_new);
 			mem_free0(ifname);
 		}
 	}
