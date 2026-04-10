@@ -803,7 +803,9 @@ c_net_remove_interface(void *netp, const char *if_name_mac)
 			if (network_str_to_mac_addr(_cfg->pnet_name, cfg_mac) != 0)
 				continue;
 			char *cfg_if_name = network_get_ifname_by_mac_in_ns_new(cfg_mac, pid);
-			if (cfg_if_name && !strcmp(cfg_if_name, if_name_mac)) {
+			if (!cfg_if_name)
+				continue;				
+			if (!strcmp(cfg_if_name, if_name_mac)) {
 				cfg = _cfg;
 				memcpy(if_mac, cfg_mac, MAC_ADDR_LEN);
 				mem_free0(cfg_if_name);
