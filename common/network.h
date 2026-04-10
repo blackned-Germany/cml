@@ -255,9 +255,8 @@ network_rename_ifi(const char *old_ifi_name, const char *new_ifi_name);
  * Altnames persist across namespace transitions and can interfere with
  * udev naming policies inside containers.
  * @param dev The interface name.
- * @return 0 on success, -1 on error
  */
-int
+void
 network_remove_all_altnames(const char *dev);
 
 /**
