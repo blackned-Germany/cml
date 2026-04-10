@@ -179,9 +179,11 @@ hotplug_rename_ifi_new(const char *oldname, const char *infix)
 	unsigned int *ifi_idx;
 	char *newname = NULL;
 
-	// Check if this interface has a known name from a previous assignment.
-	// This handles interfaces returning from containers (which may have
-	// renamed them) or from cleanup (which uses cml-prefixed collision names).
+	/*
+	 * Check if this interface has a known name from a previous assignment.
+	 * This handles interfaces returning from containers (which may have
+	 * renamed them) or from cleanup (which uses cml-prefixed collision names).
+	 */
 	uint8_t mac[MAC_ADDR_LEN];
 	if (network_get_mac_by_ifname(oldname, mac) == 0) {
 		const char *known_name = hotplug_get_ifname_by_mac(mac);
@@ -594,11 +596,13 @@ hotplug_unregister_netdev(container_t *container, uint8_t mac[MAC_ADDR_LEN])
 
 	hotplug_container_netdev_mapping_free(mapping_to_remove);
 
-	// If the NIC is in root ns, add to phys available list synchronously and
-	// trigger a uevent so it gets reassigned (e.g., to c0).
-	// The synchronous add is needed because during config updates, the
-	// replacement container's c_net_start_post_clone may run before the
-	// retriggered uevent is processed by the event loop.
+	/*
+	 * If the NIC is in root ns, add to phys available list synchronously and
+	 * trigger a uevent so it gets reassigned (e.g., to c0).
+	 * The synchronous add is needed because during config updates, the
+	 * replacement container's c_net_start_post_clone may run before the
+	 * retriggered uevent is processed by the event loop.
+	 */
 	char *if_name = network_get_ifname_by_addr_new(mac);
 	if (if_name) {
 		cmld_netif_phys_add_by_mac(mac);
