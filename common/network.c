@@ -651,9 +651,9 @@ network_remove_all_altnames(const char *dev)
 	char *line = NULL;
 	size_t line_size = 0;
 	int ret = 0;
+	char altname[IFNAMSIZ];
 
-	while (getline(&line, &line_size, fp) != -1) {
-		char altname[IFNAMSIZ];
+	while (getline(&line, &line_size, fp) != -1) {		
 		if (sscanf(line, " altname %15s", altname) == 1) {
 			DEBUG("Removing altname %s from %s", altname, dev);
 			const char *const argv[] = { IP_PATH, "link",	 "property", "del", "dev",
